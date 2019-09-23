@@ -24,6 +24,7 @@ public class CachedArgumentSorterNode extends BaseNode {
   private final ArgumentSchema postApplicationSchema;
   private final boolean appliesFully;
   @Child private InvokeCallableNode oversaturatedCallableNode = null;
+  @Child private CallOptimiserNode optimiserNode = CallOptimiserNode.create();
 
   /**
    * Creates a node that generates and then caches the argument mapping.
@@ -84,7 +85,7 @@ public class CachedArgumentSorterNode extends BaseNode {
    * @param optimiser a call optimiser node, capable of performing the actual function call
    * @return the provided {@code arguments} in the order expected by the cached {@link Function}
    */
-  public Object execute(Function function, Object[] arguments, CallOptimiserNode optimiser) {
+  public Object execute(Function function, Object[] arguments) {
     Object[] mappedAppliedArguments;
 
     if (originalFunction.getSchema().hasAnyPreApplied()) {
@@ -100,11 +101,11 @@ public class CachedArgumentSorterNode extends BaseNode {
         if (this.isTail()) {
           throw new TailCallException(function, mappedAppliedArguments);
         } else {
-          return optimiser.executeDispatch(function, mappedAppliedArguments);
+          return optimiserNode.executeDispatch(function, mappedAppliedArguments);
         }
       } else {
         Object evaluatedVal =
-            optimiser.executeDispatch(function, mappedAppliedArguments);
+            optimiserNode.executeDispatch(function, mappedAppliedArguments);
 
         return this.oversaturatedCallableNode.execute(
             evaluatedVal, generateOversaturatedArguments(function, arguments));

@@ -14,14 +14,15 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import org.enso.interpreter.Constants;
 import org.enso.interpreter.node.callable.argument.sorter.ArgumentSorterNode;
 import org.enso.interpreter.node.callable.argument.sorter.ArgumentSorterNodeGen;
+import org.enso.interpreter.node.callable.dispatch.CallOptimiserNode;
 import org.enso.interpreter.runtime.callable.argument.CallArgumentInfo;
 
 /** A runtime representation of a function object in Enso. */
 @ExportLibrary(InteropLibrary.class)
 public final class Function implements TruffleObject {
-  private final RootCallTarget callTarget;
-  private final MaterializedFrame scope;
-  private final ArgumentSchema schema;
+  private final @CompilationFinal RootCallTarget callTarget;
+  private final @CompilationFinal MaterializedFrame scope;
+  private final @CompilationFinal ArgumentSchema schema;
   private final @CompilerDirectives.CompilationFinal(dimensions = 1) Object[] preAppliedArguments;
   private final @CompilationFinal(dimensions = 1) Object[] oversaturatedArguments;
 
@@ -149,14 +150,14 @@ public final class Function implements TruffleObject {
      * @return the result of executing {@code function} on {@code arguments}
      */
     @Specialization(
-        guards = "arguments.length == cachedArgsLength",
+//        guards = "arguments.length == cachedArgsLength",
         limit = Constants.CacheSizes.FUNCTION_INTEROP_LIBRARY)
     protected static Object callCached(
         Function function,
         Object[] arguments,
-        @Cached(value = "arguments.length") int cachedArgsLength,
-        @Cached(value = "buildSorter(cachedArgsLength)") ArgumentSorterNode sorterNode) {
-      return sorterNode.execute(function, arguments);
+//        @Cached(value = "arguments.length") int cachedArgsLength,
+        @Cached(allowUncached = true) CallOptimiserNode sorterNode) {
+      return sorterNode.executeDispatch(function, arguments);
     }
 
     /**
@@ -166,10 +167,10 @@ public final class Function implements TruffleObject {
      * @param arguments the arguments to pass to the {@code function}.
      * @return the result of function application.
      */
-    @Specialization(replaces = "callCached")
-    protected static Object callUncached(Function function, Object[] arguments) {
-      return callCached(function, arguments, arguments.length, buildSorter(arguments.length));
-    }
+//    @Specialization(replaces = "callCached")
+//    protected static Object callUncached(Function function, Object[] arguments) {
+//      return callCached(function, arguments, arguments.length, buildSorter(arguments.length));
+//    }
   }
 
   /**
@@ -194,6 +195,11 @@ public final class Function implements TruffleObject {
     public static Object[] buildArguments(Function function, Object[] positionalArguments) {
       return new Object[] {function.getScope(), positionalArguments};
     }
+
+    public static Object[] buildArguments(MaterializedFrame scope, Object[] positionalArguments) {
+      return new Object[] {scope, positionalArguments};
+    }
+
 
     /**
      * Gets the positional arguments out of the array.

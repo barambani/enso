@@ -56,9 +56,8 @@ public abstract class ArgumentSorterNode extends BaseNode {
       Function function,
       Object[] arguments,
       @Cached("create(function, getSchema(), hasDefaultsSuspended(), isTail())")
-          CachedArgumentSorterNode mappingNode,
-      @Cached CallOptimiserNode optimiser) {
-    return mappingNode.execute(function, arguments, optimiser);
+          CachedArgumentSorterNode mappingNode) {
+    return mappingNode.execute(function, arguments);
   }
 
   /**
@@ -74,8 +73,7 @@ public abstract class ArgumentSorterNode extends BaseNode {
     return invokeCached(
         function,
         arguments,
-        CachedArgumentSorterNode.create(function, getSchema(), hasDefaultsSuspended(), isTail()),
-        CallOptimiserNode.create());
+        CachedArgumentSorterNode.create(function, getSchema(), hasDefaultsSuspended(), isTail()));
   }
 
   /**

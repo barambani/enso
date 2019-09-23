@@ -1,5 +1,6 @@
 package org.enso.interpreter.node.callable.dispatch;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.LoopNode;
@@ -7,7 +8,9 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import org.enso.interpreter.node.callable.ExecuteCallNode;
 import org.enso.interpreter.node.callable.ExecuteCallNodeGen;
+import org.enso.interpreter.runtime.callable.function.Function;
 import org.enso.interpreter.runtime.control.TailCallException;
+import org.enso.interpreter.runtime.type.TypesGen;
 
 /**
  * A version of {@link CallOptimiserNode} that is fully prepared to handle tail calls. Tail calls
@@ -36,9 +39,10 @@ public class LoopingCallOptimiserNode extends CallOptimiserNode {
    * @return the result of executing {@code callable} using {@code arguments}
    */
   @Override
-  public Object executeDispatch(Object callable, Object[] arguments) {
+  public Object executeDispatch(Function callable, Object[] arguments) {
     VirtualFrame frame = Truffle.getRuntime().createVirtualFrame(null, loopFrameDescriptor);
-    ((RepeatedCallNode) loopNode.getRepeatingNode()).setNextCall(frame, callable, arguments);
+    ((RepeatedCallNode) loopNode.getRepeatingNode())
+        .setNextCall(frame, new TailCallException(callable, arguments));
     loopNode.executeLoop(frame);
 
     return ((RepeatedCallNode) loopNode.getRepeatingNode()).getResult(frame);
@@ -52,7 +56,6 @@ public class LoopingCallOptimiserNode extends CallOptimiserNode {
   public static final class RepeatedCallNode extends Node implements RepeatingNode {
     private final FrameSlot resultSlot;
     private final FrameSlot functionSlot;
-    private final FrameSlot argsSlot;
     @Child private ExecuteCallNode dispatchNode;
 
     /**
@@ -63,7 +66,6 @@ public class LoopingCallOptimiserNode extends CallOptimiserNode {
     public RepeatedCallNode(FrameDescriptor descriptor) {
       functionSlot = descriptor.findOrAddFrameSlot("<TCO Function>", FrameSlotKind.Object);
       resultSlot = descriptor.findOrAddFrameSlot("<TCO Result>", FrameSlotKind.Object);
-      argsSlot = descriptor.findOrAddFrameSlot("<TCO Arguments>", FrameSlotKind.Object);
       dispatchNode = ExecuteCallNodeGen.create();
     }
 
@@ -74,9 +76,8 @@ public class LoopingCallOptimiserNode extends CallOptimiserNode {
      * @param function the function to execute in {@code frame}
      * @param arguments the arguments to execute {@code function} with
      */
-    public void setNextCall(VirtualFrame frame, Object function, Object[] arguments) {
-      frame.setObject(functionSlot, function);
-      frame.setObject(argsSlot, arguments);
+    public void setNextCall(VirtualFrame frame, TailCallException e) {
+      frame.setObject(functionSlot, e);
     }
 
     /**
@@ -95,23 +96,13 @@ public class LoopingCallOptimiserNode extends CallOptimiserNode {
      * @param frame the stack frame for execution
      * @return the function to be executed next in the loop
      */
-    public Object getNextFunction(VirtualFrame frame) {
+    public TailCallException getNextFunction(VirtualFrame frame) {
       Object result = FrameUtil.getObjectSafe(frame, functionSlot);
+      //      CompilerDirectives.ensureVirtualized(result);
       frame.setObject(functionSlot, null);
-      return result;
+      return CompilerDirectives.castExact(result, TailCallException.class);
     }
 
-    /**
-     * Generates the next set of arguments to the looping function.
-     *
-     * @param frame the stack frame for execution
-     * @return the arguments to be applied to the next function
-     */
-    public Object[] getNextArgs(VirtualFrame frame) {
-      Object[] result = (Object[]) FrameUtil.getObjectSafe(frame, argsSlot);
-      frame.setObject(argsSlot, null);
-      return result;
-    }
 
     /**
      * Executes the node in a repeating fashion until the call is complete.
@@ -122,12 +113,13 @@ public class LoopingCallOptimiserNode extends CallOptimiserNode {
     @Override
     public boolean executeRepeating(VirtualFrame frame) {
       try {
-        Object function = getNextFunction(frame);
-        Object[] arguments = getNextArgs(frame);
-        frame.setObject(resultSlot, dispatchNode.executeCall(function, arguments));
+        TailCallException function = getNextFunction(frame);
+        //        Object[] arguments = getNextArgs(frame);
+        frame.setObject(
+            resultSlot, dispatchNode.executeCall(function.getFunction(), function.getArguments()));
         return false;
       } catch (TailCallException e) {
-        setNextCall(frame, e.getFunction(), e.getArguments());
+        setNextCall(frame, e);
         return true;
       }
     }

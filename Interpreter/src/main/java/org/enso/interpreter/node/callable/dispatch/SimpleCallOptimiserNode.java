@@ -3,6 +3,7 @@ package org.enso.interpreter.node.callable.dispatch;
 import com.oracle.truffle.api.CompilerDirectives;
 import org.enso.interpreter.node.callable.ExecuteCallNode;
 import org.enso.interpreter.node.callable.ExecuteCallNodeGen;
+import org.enso.interpreter.runtime.callable.function.Function;
 import org.enso.interpreter.runtime.control.TailCallException;
 
 /**
@@ -22,7 +23,7 @@ public class SimpleCallOptimiserNode extends CallOptimiserNode {
    * @return the result of executing {@code callable} using {@code arguments}
    */
   @Override
-  public Object executeDispatch(Object callable, Object[] arguments) {
+  public Object executeDispatch(Function callable, Object[] arguments) {
     try {
       return executeCallNode.executeCall(callable, arguments);
     } catch (TailCallException e) {

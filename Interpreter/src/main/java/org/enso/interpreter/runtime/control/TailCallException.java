@@ -1,5 +1,6 @@
 package org.enso.interpreter.runtime.control;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import org.enso.interpreter.runtime.callable.function.Function;
 
@@ -10,7 +11,7 @@ import org.enso.interpreter.runtime.callable.function.Function;
  */
 public class TailCallException extends ControlFlowException {
   private final Function function;
-  private final Object[] arguments;
+  private final @CompilerDirectives.CompilationFinal(dimensions = 1) Object[] arguments;
 
   /**
    * Creates a new exception containing the necessary data to continue computation.
@@ -21,6 +22,7 @@ public class TailCallException extends ControlFlowException {
   public TailCallException(Function function, Object[] arguments) {
     this.function = function;
     this.arguments = arguments;
+//    CompilerDirectives.ensureVirtualized(this.arguments);
   }
 
   /**

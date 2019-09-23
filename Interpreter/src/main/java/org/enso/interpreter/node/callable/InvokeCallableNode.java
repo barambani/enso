@@ -7,11 +7,13 @@ import org.enso.interpreter.Constants;
 import org.enso.interpreter.node.BaseNode;
 import org.enso.interpreter.node.callable.argument.sorter.ArgumentSorterNode;
 import org.enso.interpreter.node.callable.argument.sorter.ArgumentSorterNodeGen;
+import org.enso.interpreter.node.callable.dispatch.CallOptimiserNode;
 import org.enso.interpreter.runtime.callable.UnresolvedSymbol;
 import org.enso.interpreter.runtime.callable.argument.CallArgumentInfo;
 import org.enso.interpreter.runtime.callable.atom.Atom;
 import org.enso.interpreter.runtime.callable.atom.AtomConstructor;
 import org.enso.interpreter.runtime.callable.function.Function;
+import org.enso.interpreter.runtime.control.TailCallException;
 import org.enso.interpreter.runtime.error.MethodDoesNotExistException;
 import org.enso.interpreter.runtime.error.NotInvokableException;
 import org.enso.interpreter.runtime.type.TypesGen;
@@ -25,7 +27,7 @@ import org.enso.interpreter.runtime.type.TypesGen;
  */
 public abstract class InvokeCallableNode extends BaseNode {
 
-  @Child private ArgumentSorterNode argumentSorter;
+  @Child private CallOptimiserNode argumentSorter;
   @Child private MethodResolverNode methodResolverNode;
 
   private final boolean canApplyThis;
@@ -56,7 +58,8 @@ public abstract class InvokeCallableNode extends BaseNode {
     this.canApplyThis = appliesThis;
     this.thisArgumentPosition = idx;
 
-    this.argumentSorter = ArgumentSorterNodeGen.create(schema, hasDefaultsSuspended);
+    this.argumentSorter =
+        CallOptimiserNode.create(); // ArgumentSorterNodeGen.create(schema, hasDefaultsSuspended);
     this.methodResolverNode = MethodResolverNodeGen.create();
   }
 
@@ -69,7 +72,11 @@ public abstract class InvokeCallableNode extends BaseNode {
    */
   @Specialization
   public Object invokeFunction(Function function, Object[] arguments) {
-    return this.argumentSorter.execute(function, arguments);
+    if (isTail()) {
+      throw new TailCallException(function, arguments);
+    } else {
+      return this.argumentSorter.executeDispatch(function, arguments);
+    }
   }
 
   /**
@@ -99,7 +106,11 @@ public abstract class InvokeCallableNode extends BaseNode {
       if (methodCalledOnNonAtom.profile(TypesGen.isAtom(selfArgument))) {
         Atom self = (Atom) selfArgument;
         Function function = methodResolverNode.execute(symbol, self);
-        return this.argumentSorter.execute(function, arguments);
+        if (isTail()) {
+          throw new TailCallException(function, arguments);
+        } else {
+          return this.argumentSorter.executeDispatch(function, arguments);
+        }
       } else {
         throw new MethodDoesNotExistException(selfArgument, symbol.getName(), this);
       }
@@ -140,6 +151,6 @@ public abstract class InvokeCallableNode extends BaseNode {
   @Override
   public void setTail(boolean isTail) {
     super.setTail(isTail);
-    argumentSorter.setTail(isTail);
+    //    argumentSorter.setTail(isTail);
   }
 }
