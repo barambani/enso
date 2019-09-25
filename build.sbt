@@ -72,7 +72,6 @@ lazy val pkg = (project in file("pkg"))
 
 val truffleRunOptions = Seq(
   fork := true,
-  javaOptions += s"-Dtruffle.class.path.append=${(Compile / classDirectory).value}",
   javaOptions += s"-Dgraal.PrintGraph=Network",
   javaOptions += s"-Dgraal.Dump=Truffle:2",
   javaOptions += s"-Dgraal.TruffleBackgroundCompilation=false",
@@ -92,13 +91,12 @@ lazy val interpreter = (project in file("interpreter"))
     libraryDependencies ++= Seq(
       "com.chuusai"            %% "shapeless"                % "2.3.3",
       "com.storm-enroute"      %% "scalameter"               % "0.17" % "bench",
-      "org.graalvm.sdk"        % "graal-sdk"                 % "19.0.0",
-      "org.graalvm.sdk"        % "polyglot-tck"              % "19.0.0",
-      "org.graalvm.truffle"    % "truffle-api"               % "19.0.0",
-      "org.graalvm.truffle"    % "truffle-dsl-processor"     % "19.0.0",
-      "org.graalvm.truffle"    % "truffle-nfi"               % "19.0.0",
-      "org.graalvm.truffle"    % "truffle-tck"               % "19.0.0",
-      "org.graalvm.truffle"    % "truffle-tck-common"        % "19.0.0",
+      "org.graalvm.sdk"        % "graal-sdk"                 % "19.2.0",
+      "org.graalvm.sdk"        % "polyglot-tck"              % "19.2.0",
+      "org.graalvm.truffle"    % "truffle-api"               % "19.2.0",
+      "org.graalvm.truffle"    % "truffle-dsl-processor"     % "19.2.0",
+      "org.graalvm.truffle"    % "truffle-tck"               % "19.2.0",
+      "org.graalvm.truffle"    % "truffle-tck-common"        % "19.2.0",
       "org.scalacheck"         %% "scalacheck"               % "1.14.0" % Test,
       "org.scalatest"          %% "scalatest"                % "3.2.0-SNAP10" % Test,
       "org.scalactic"          %% "scalactic"                % "3.0.8" % Test,
