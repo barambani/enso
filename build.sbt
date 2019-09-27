@@ -119,7 +119,6 @@ lazy val interpreter = (project in file("interpreter"))
   )
   .settings(
     inConfig(Compile)(truffleRunOptions),
-    inConfig(Test)(truffleRunOptions),
     parallelExecution in Test := false
   )
   .configs(Benchmark)
@@ -127,7 +126,6 @@ lazy val interpreter = (project in file("interpreter"))
     testFrameworks += new TestFramework("org.scalameter.ScalaMeterFramework"),
     logBuffered := false,
     inConfig(Benchmark)(Defaults.testSettings),
-    inConfig(Benchmark)(truffleRunOptions),
     bench := (test in Benchmark).value,
     parallelExecution in Benchmark := false
   )
