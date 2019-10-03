@@ -31,7 +31,7 @@ class EnsoBench extends Bench.LocalTime with LanguageRunner {
     """
       |{ |upto|
       |  counter = { |current|
-      |      ifZero: [current, 0, @{ @counter [current - 1] }]
+      |      ifZero: [current, 0, #{ @counter [current - 1] }]
       |  };
       |  res = @counter [upto];
       |  res
@@ -44,6 +44,26 @@ class EnsoBench extends Bench.LocalTime with LanguageRunner {
     measure method "sum numbers upto a million" in {
       using(gen) in { _ =>
         countTCOCorecursive.call(1000000)
+      }
+    }
+  }
+
+  val countTCOCustomIfCode =
+    """
+      |{ |upto|
+      |  if = { |cond, ifT, ifF| ifZero: [cond, #ifT, #ifF] };
+      |  counter = { |current| @if [current, {0}, { #counter [current - 1] } ] };
+      |  res = @counter [upto];
+      |  res
+      |}
+      |""".stripMargin
+
+  val countTCOCustomIf = eval(countTCOCustomIfCode)
+
+  performance of "Enso TCO custom if" in {
+    measure method "sum numbers upto a million" in {
+      using(gen) in { _ =>
+        countTCOCustomIf.call(1000000)
       }
     }
   }

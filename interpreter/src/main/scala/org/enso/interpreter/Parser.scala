@@ -17,7 +17,8 @@ trait AstExpressionVisitor[+T] {
 
   def visitApplication(
     function: AstExpression,
-    arguments: java.util.List[AstExpression]
+    arguments: java.util.List[AstExpression],
+    isDirect: Boolean
   ): T
 
   def visitIf(
@@ -64,10 +65,13 @@ case class AstVariable(name: String) extends AstExpression {
     visitor.visitVariable(name)
 }
 
-case class AstApply(fun: AstExpression, args: List[AstExpression])
+case class AstApply(
+  fun: AstExpression,
+  args: List[AstExpression],
+  isDirect: Boolean)
     extends AstExpression {
   override def visitExpression[T](visitor: AstExpressionVisitor[T]): T =
-    visitor.visitApplication(fun, args.asJava)
+    visitor.visitApplication(fun, args.asJava, isDirect)
 }
 
 case class AstFunction(
@@ -140,8 +144,8 @@ class EnsoParserInternal extends JavaTokenParsers {
 
   def expression: Parser[AstExpression] = ifZero | arith | function
 
-  def call: Parser[AstApply] = "@" ~> expression ~ (argList ?) ^^ {
-    case expr ~ args => AstApply(expr, args.getOrElse(Nil))
+  def call: Parser[AstApply] = ("#" | "@") ~ expression ~ (argList ?) ^^ {
+    case dir ~ expr ~ args => AstApply(expr, args.getOrElse(Nil), dir == "#")
   }
 
   def assignment: Parser[AstAssignment] = ident ~ ("=" ~> expression) ^^ {

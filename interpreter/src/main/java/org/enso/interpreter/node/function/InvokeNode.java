@@ -3,20 +3,30 @@ package org.enso.interpreter.node.function;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
+import org.enso.interpreter.node.callable.ExecuteCallNodeGen;
 import org.enso.interpreter.runtime.TailCallException;
 import org.enso.interpreter.node.ExpressionNode;
 import org.enso.interpreter.runtime.Function;
 
 @NodeInfo(shortName = "@", description = "Executes function")
 public final class InvokeNode extends ExpressionNode {
-  @Child private ExpressionNode expression;
-  @Children private final ExpressionNode[] arguments;
-  @Child private DispatchNode dispatchNode;
+  @Child
+  private ExpressionNode expression;
+  @Children
+  private final ExpressionNode[] arguments;
+  @Child
+  private DispatchNode dispatchNode;
+  @Child
+  private CallNode callNode;
+  private final boolean isDirect;
 
-  public InvokeNode(ExpressionNode expression, ExpressionNode[] arguments) {
+  public InvokeNode(ExpressionNode expression, ExpressionNode[] arguments, boolean isDirect) {
     this.expression = expression;
     this.arguments = arguments;
-    this.dispatchNode = new SimpleDispatchNode();
+    this.isDirect = isDirect;
+    callNode = CallNodeGen.create();
+    dispatchNode = new SimpleDispatchNode();
+
   }
 
   @Override
@@ -30,7 +40,11 @@ public final class InvokeNode extends ExpressionNode {
 
     CompilerAsserts.compilationConstant(this.isTail());
     if (this.isTail()) {
-      throw new TailCallException(function, positionalArguments);
+      if (isDirect) {
+        return callNode.executeCall(function, positionalArguments);
+      } else {
+        throw new TailCallException(function, positionalArguments);
+      }
     } else {
       return dispatchNode.executeDispatch(function, positionalArguments);
     }

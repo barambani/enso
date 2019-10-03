@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 
 public class ExpressionFactory
     implements AstExpressionVisitor<ExpressionNode>,
-        AstStatementVisitor<StatementNode, ExpressionNode> {
+    AstStatementVisitor<StatementNode, ExpressionNode> {
 
   private final LocalScope scope;
   private final Language language;
@@ -117,10 +117,10 @@ public class ExpressionFactory
   }
 
   @Override
-  public ExpressionNode visitApplication(AstExpression function, List<AstExpression> arguments) {
+  public ExpressionNode visitApplication(AstExpression function, List<AstExpression> arguments, boolean isDirect) {
     return new InvokeNode(
         function.visitExpression(this),
-        arguments.stream().map(arg -> arg.visitExpression(this)).toArray(ExpressionNode[]::new));
+        arguments.stream().map(arg -> arg.visitExpression(this)).toArray(ExpressionNode[]::new), isDirect);
   }
 
   @Override
