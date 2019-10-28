@@ -87,6 +87,8 @@ public class ApplicationNode extends ExpressionNode {
   @Override
   public Object executeGeneric(VirtualFrame frame) {
     return this.invokeCallableNode.execute(
-        this.callable.executeGeneric(frame), evaluateArguments(frame));
+        this.callable.executeGeneric(frame),
+        Function.ArgumentsHelper.getStateRef(frame.getArguments()),
+        evaluateArguments(frame));
   }
 }

@@ -15,6 +15,7 @@ import org.enso.interpreter.runtime.callable.argument.CallArgumentInfo.ArgumentM
 import org.enso.interpreter.runtime.callable.argument.CallArgumentInfo.ArgumentMappingBuilder;
 import org.enso.interpreter.runtime.callable.function.ArgumentSchema;
 import org.enso.interpreter.runtime.callable.function.Function;
+import org.enso.interpreter.runtime.state.StateRef;
 
 /**
  * This class handles the case where a mapping for reordering arguments to a given callable has
@@ -112,13 +113,13 @@ public class CachedArgumentSorterNode extends BaseNode {
   }
 
   @ExplodeLoop
-  private void executeArguments(Object[] arguments) {
+  private void executeArguments(Object[] arguments, StateRef stateRef) {
     if (executors == null) {
       initArgumentExecutors(arguments);
     }
     for (int i = 0; i < argumentShouldExecute.length; i++) {
       if (executors[i] != null) {
-        arguments[i] = executors[i].executeThunk(((Thunk) arguments[i]));
+        arguments[i] = executors[i].executeThunk(((Thunk) arguments[i]), stateRef);
       }
     }
   }
@@ -131,9 +132,13 @@ public class CachedArgumentSorterNode extends BaseNode {
    * @param optimiser a call optimiser node, capable of performing the actual function call
    * @return the provided {@code arguments} in the order expected by the cached {@link Function}
    */
-  public Object execute(Function function, Object[] arguments, CallOptimiserNode optimiser) {
+  public Object execute(
+      Function function, StateRef stateRef, Object[] arguments, CallOptimiserNode optimiser) {
     Object[] mappedAppliedArguments;
-    if (argumentsExecutionMode.shouldExecute()) executeArguments(arguments);
+
+    if (argumentsExecutionMode.shouldExecute()) {
+      executeArguments(arguments, stateRef);
+    }
 
     if (originalFunction.getSchema().hasAnyPreApplied()) {
       mappedAppliedArguments = function.clonePreAppliedArguments();
@@ -148,13 +153,13 @@ public class CachedArgumentSorterNode extends BaseNode {
         if (this.isTail()) {
           throw new TailCallException(function, mappedAppliedArguments);
         } else {
-          return optimiser.executeDispatch(function, mappedAppliedArguments);
+          return optimiser.executeDispatch(function, stateRef, mappedAppliedArguments);
         }
       } else {
-        Object evaluatedVal = optimiser.executeDispatch(function, mappedAppliedArguments);
+        Object evaluatedVal = optimiser.executeDispatch(function, stateRef, mappedAppliedArguments);
 
         return this.oversaturatedCallableNode.execute(
-            evaluatedVal, generateOversaturatedArguments(function, arguments));
+            evaluatedVal, stateRef, generateOversaturatedArguments(function, arguments));
       }
     } else {
       return new Function(

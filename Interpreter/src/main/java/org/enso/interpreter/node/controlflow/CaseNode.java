@@ -5,6 +5,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import org.enso.interpreter.node.BaseNode;
 import org.enso.interpreter.runtime.callable.atom.Atom;
 import org.enso.interpreter.runtime.callable.function.Function;
+import org.enso.interpreter.runtime.state.StateRef;
 
 /** An abstract representation of a case expression. */
 public abstract class CaseNode extends BaseNode {
@@ -16,7 +17,7 @@ public abstract class CaseNode extends BaseNode {
    * @throws UnexpectedResultException when the result of desctructuring {@code target} can't be
    *     represented as a value of the expected return type
    */
-  public abstract void executeAtom(VirtualFrame frame, Atom target)
+  public abstract void executeAtom(VirtualFrame frame, StateRef stateRef, Atom target)
       throws UnexpectedResultException;
 
   /**
@@ -27,7 +28,7 @@ public abstract class CaseNode extends BaseNode {
    * @throws UnexpectedResultException when the result of desctructuring {@code target} can't be
    *     represented as a value of the expected return type
    */
-  public abstract void executeFunction(VirtualFrame frame, Function target)
+  public abstract void executeFunction(VirtualFrame frame, StateRef stateRef, Function target)
       throws UnexpectedResultException;
 
   /**
@@ -38,6 +39,6 @@ public abstract class CaseNode extends BaseNode {
    * @throws UnexpectedResultException when the result of desctructuring {@code target} can't be
    *     represented as a value of the expected return type
    */
-  public abstract void executeNumber(VirtualFrame frame, long target)
+  public abstract void executeNumber(VirtualFrame frame, StateRef stateRef, long target)
       throws UnexpectedResultException;
 }

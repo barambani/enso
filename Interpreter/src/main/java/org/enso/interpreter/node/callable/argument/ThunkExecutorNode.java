@@ -10,6 +10,7 @@ import org.enso.interpreter.Constants;
 import org.enso.interpreter.node.callable.dispatch.LoopingCallOptimiserNode;
 import org.enso.interpreter.runtime.control.TailCallException;
 import org.enso.interpreter.runtime.callable.argument.Thunk;
+import org.enso.interpreter.runtime.state.StateRef;
 
 /** Node responsible for executing (forcing) thunks passed to it as runtime values. */
 @NodeField(name = "isTail", type = Boolean.class)
@@ -21,7 +22,7 @@ public abstract class ThunkExecutorNode extends Node {
    * @param thunk the thunk to force
    * @return the return value of this thunk
    */
-  public abstract Object executeThunk(Thunk thunk);
+  public abstract Object executeThunk(Thunk thunk, StateRef stateRef);
 
   abstract boolean getIsTail();
 
@@ -30,6 +31,7 @@ public abstract class ThunkExecutorNode extends Node {
       limit = Constants.CacheSizes.THUNK_EXECUTOR_NODE)
   Object doCached(
       Thunk thunk,
+      StateRef stateRef,
       @Cached("create(thunk.getCallTarget())") DirectCallNode callNode,
       @Cached("createLoopingOptimizerIfNeeded()")
           LoopingCallOptimiserNode loopingCallOptimiserNode) {
@@ -39,7 +41,8 @@ public abstract class ThunkExecutorNode extends Node {
       try {
         return callNode.call(thunk.getScope());
       } catch (TailCallException e) {
-        return loopingCallOptimiserNode.executeDispatch(e.getFunction(), e.getArguments());
+        return loopingCallOptimiserNode.executeDispatch(
+            e.getFunction(), stateRef, e.getArguments());
       }
     }
   }
@@ -47,13 +50,14 @@ public abstract class ThunkExecutorNode extends Node {
   @Specialization(replaces = "doCached")
   Object doUncached(
       Thunk thunk,
+      StateRef stateRef,
       @Cached IndirectCallNode callNode,
       @Cached("createLoopingOptimizerIfNeeded()")
           LoopingCallOptimiserNode loopingCallOptimiserNode) {
     try {
       return callNode.call(thunk.getCallTarget(), thunk.getScope());
     } catch (TailCallException e) {
-      return loopingCallOptimiserNode.executeDispatch(e.getFunction(), e.getArguments());
+      return loopingCallOptimiserNode.executeDispatch(e.getFunction(), stateRef, e.getArguments());
     }
   }
 

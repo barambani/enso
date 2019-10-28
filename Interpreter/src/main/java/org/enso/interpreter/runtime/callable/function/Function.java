@@ -19,6 +19,9 @@ import org.enso.interpreter.node.callable.argument.sorter.ArgumentSorterNode;
 import org.enso.interpreter.node.callable.argument.sorter.ArgumentSorterNodeGen;
 import org.enso.interpreter.runtime.callable.argument.ArgumentDefinition;
 import org.enso.interpreter.runtime.callable.argument.CallArgumentInfo;
+import org.enso.interpreter.runtime.state.StateRef;
+
+import javax.swing.plaf.nimbus.State;
 
 /** A runtime representation of a function object in Enso. */
 @ExportLibrary(InteropLibrary.class)
@@ -163,7 +166,7 @@ public final class Function implements TruffleObject {
         Object[] arguments,
         @Cached(value = "arguments.length") int cachedArgsLength,
         @Cached(value = "buildSorter(cachedArgsLength)") ArgumentSorterNode sorterNode) {
-      return sorterNode.execute(function, arguments);
+      return sorterNode.execute(function, new StateRef(), arguments);
     }
 
     /**
@@ -198,8 +201,13 @@ public final class Function implements TruffleObject {
      * @param positionalArguments the arguments to that function, sorted into positional order
      * @return an array containing the necessary information to call an Enso function
      */
-    public static Object[] buildArguments(Function function, Object[] positionalArguments) {
-      return new Object[] {function.getScope(), positionalArguments};
+    public static Object[] buildArguments(
+        Function function, StateRef stateRef, Object[] positionalArguments) {
+      return new Object[] {function.getScope(), stateRef, positionalArguments};
+    }
+
+    public static Object[] buildArguments( StateRef stateRef, Object[] positionalArguments) {
+      return new Object[] {null, stateRef, positionalArguments};
     }
 
     /**
@@ -210,7 +218,7 @@ public final class Function implements TruffleObject {
      * @return the positional arguments to the function
      */
     public static Object[] getPositionalArguments(Object[] arguments) {
-      return (Object[]) arguments[1];
+      return (Object[]) arguments[2];
     }
 
     /**
@@ -222,6 +230,10 @@ public final class Function implements TruffleObject {
      */
     public static MaterializedFrame getLocalScope(Object[] arguments) {
       return (MaterializedFrame) arguments[0];
+    }
+
+    public static StateRef getStateRef(Object[] arguments) {
+      return (StateRef) arguments[1];
     }
   }
 

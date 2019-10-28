@@ -8,6 +8,7 @@ import com.oracle.truffle.api.nodes.RepeatingNode;
 import org.enso.interpreter.node.callable.ExecuteCallNode;
 import org.enso.interpreter.node.callable.ExecuteCallNodeGen;
 import org.enso.interpreter.runtime.control.TailCallException;
+import org.enso.interpreter.runtime.state.StateRef;
 
 /**
  * A version of {@link CallOptimiserNode} that is fully prepared to handle tail calls. Tail calls
@@ -36,9 +37,12 @@ public class LoopingCallOptimiserNode extends CallOptimiserNode {
    * @return the result of executing {@code callable} using {@code arguments}
    */
   @Override
-  public Object executeDispatch(Object callable, Object[] arguments) {
-    VirtualFrame frame = Truffle.getRuntime().createVirtualFrame(null, loopFrameDescriptor);
-    ((RepeatedCallNode) loopNode.getRepeatingNode()).setNextCall(frame, callable, arguments);
+  public Object executeDispatch(Object callable, StateRef stateRef, Object[] arguments) {
+    VirtualFrame frame =
+        Truffle.getRuntime().createVirtualFrame(new Object[] {stateRef}, loopFrameDescriptor);
+    RepeatedCallNode repeatedCallNode = (RepeatedCallNode) loopNode.getRepeatingNode();
+    repeatedCallNode.setNextCall(frame, callable, arguments);
+
     loopNode.executeLoop(frame);
 
     return ((RepeatedCallNode) loopNode.getRepeatingNode()).getResult(frame);
@@ -121,10 +125,11 @@ public class LoopingCallOptimiserNode extends CallOptimiserNode {
      */
     @Override
     public boolean executeRepeating(VirtualFrame frame) {
+      StateRef stateRef = (StateRef) frame.getArguments()[0];
       try {
         Object function = getNextFunction(frame);
         Object[] arguments = getNextArgs(frame);
-        frame.setObject(resultSlot, dispatchNode.executeCall(function, arguments));
+        frame.setObject(resultSlot, dispatchNode.executeCall(function, stateRef, arguments));
         return false;
       } catch (TailCallException e) {
         setNextCall(frame, e.getFunction(), e.getArguments());

@@ -1,5 +1,6 @@
 package org.enso.interpreter.node.controlflow;
 
+import cats.data.Func;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -12,6 +13,7 @@ import org.enso.interpreter.runtime.callable.atom.Atom;
 import org.enso.interpreter.runtime.callable.function.Function;
 import org.enso.interpreter.runtime.error.RuntimeError;
 import org.enso.interpreter.runtime.error.TypeError;
+import org.enso.interpreter.runtime.state.StateRef;
 
 /**
  * A node representing a pattern match on an arbitrary runtime value.
@@ -58,11 +60,12 @@ public abstract class MatchNode extends ExpressionNode {
   @ExplodeLoop
   @Specialization
   Object doAtom(VirtualFrame frame, Atom atom) {
+    StateRef stateRef = Function.ArgumentsHelper.getStateRef(frame.getArguments());
     try {
       for (CaseNode caseNode : cases) {
-        caseNode.executeAtom(frame, atom);
+        caseNode.executeAtom(frame, stateRef, atom);
       }
-      fallback.executeAtom(frame, atom);
+      fallback.executeAtom(frame, stateRef, atom);
       CompilerDirectives.transferToInterpreter();
       throw new RuntimeException("Impossible behavior.");
 
@@ -79,11 +82,12 @@ public abstract class MatchNode extends ExpressionNode {
   @ExplodeLoop
   @Specialization
   Object doFunction(VirtualFrame frame, Function function) {
+    StateRef stateRef = Function.ArgumentsHelper.getStateRef(frame.getArguments());
     try {
       for (CaseNode caseNode : cases) {
-        caseNode.executeFunction(frame, function);
+        caseNode.executeFunction(frame, stateRef, function);
       }
-      fallback.executeFunction(frame, function);
+      fallback.executeFunction(frame, stateRef, function);
       CompilerDirectives.transferToInterpreter();
       throw new RuntimeException("Impossible behavior.");
 
@@ -100,12 +104,13 @@ public abstract class MatchNode extends ExpressionNode {
   @ExplodeLoop
   @Specialization
   Object doNumber(VirtualFrame frame, long number) {
+    StateRef stateRef = Function.ArgumentsHelper.getStateRef(frame.getArguments());
     try {
 
       for (CaseNode caseNode : cases) {
-        caseNode.executeNumber(frame, number);
+        caseNode.executeNumber(frame, stateRef, number);
       }
-      fallback.executeNumber(frame, number);
+      fallback.executeNumber(frame, stateRef, number);
       CompilerDirectives.transferToInterpreter();
       throw new RuntimeException("Impossible behavior.");
 

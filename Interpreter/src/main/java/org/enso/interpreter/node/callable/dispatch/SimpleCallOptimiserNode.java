@@ -4,6 +4,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import org.enso.interpreter.node.callable.ExecuteCallNode;
 import org.enso.interpreter.node.callable.ExecuteCallNodeGen;
 import org.enso.interpreter.runtime.control.TailCallException;
+import org.enso.interpreter.runtime.state.StateRef;
 
 /**
  * Optimistic version of {@link CallOptimiserNode} for the non tail call recursive case. Tries to
@@ -22,14 +23,14 @@ public class SimpleCallOptimiserNode extends CallOptimiserNode {
    * @return the result of executing {@code callable} using {@code arguments}
    */
   @Override
-  public Object executeDispatch(Object callable, Object[] arguments) {
+  public Object executeDispatch(Object callable, StateRef stateRef, Object[] arguments) {
     try {
-      return executeCallNode.executeCall(callable, arguments);
+      return executeCallNode.executeCall(callable, stateRef, arguments);
     } catch (TailCallException e) {
       CompilerDirectives.transferToInterpreterAndInvalidate();
       CallOptimiserNode replacement = new LoopingCallOptimiserNode();
       this.replace(replacement);
-      return replacement.executeDispatch(e.getFunction(), e.getArguments());
+      return replacement.executeDispatch(e.getFunction(), stateRef, e.getArguments());
     }
   }
 }

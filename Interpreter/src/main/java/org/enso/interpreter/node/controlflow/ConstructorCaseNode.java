@@ -9,6 +9,7 @@ import org.enso.interpreter.node.callable.ExecuteCallNodeGen;
 import org.enso.interpreter.runtime.callable.atom.Atom;
 import org.enso.interpreter.runtime.callable.atom.AtomConstructor;
 import org.enso.interpreter.runtime.callable.function.Function;
+import org.enso.interpreter.runtime.state.StateRef;
 import org.enso.interpreter.runtime.type.TypesGen;
 
 /** An implementation of the case expression specialised to working on constructors. */
@@ -50,11 +51,13 @@ public class ConstructorCaseNode extends CaseNode {
    * @throws UnexpectedResultException
    */
   @Override
-  public void executeAtom(VirtualFrame frame, Atom target) throws UnexpectedResultException {
+  public void executeAtom(VirtualFrame frame, StateRef stateRef, Atom target)
+      throws UnexpectedResultException {
     AtomConstructor matcherVal = matcher.executeAtomConstructor(frame);
     if (profile.profile(matcherVal == target.getConstructor())) {
       Function function = branch.executeFunction(frame);
-      throw new BranchSelectedException(executeCallNode.executeCall(function, target.getFields()));
+      throw new BranchSelectedException(
+          executeCallNode.executeCall(function, stateRef, target.getFields()));
     }
   }
 
@@ -65,7 +68,7 @@ public class ConstructorCaseNode extends CaseNode {
    * @param target the function to match
    */
   @Override
-  public void executeFunction(VirtualFrame frame, Function target) {}
+  public void executeFunction(VirtualFrame frame, StateRef stateRef, Function target) {}
 
   /**
    * Handles the number scrutinee case, by not matching it at all.
@@ -74,5 +77,5 @@ public class ConstructorCaseNode extends CaseNode {
    * @param target the function to match
    */
   @Override
-  public void executeNumber(VirtualFrame frame, long target) {}
+  public void executeNumber(VirtualFrame frame, StateRef stateRef, long target) {}
 }

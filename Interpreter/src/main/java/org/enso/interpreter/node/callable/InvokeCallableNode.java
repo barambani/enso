@@ -14,6 +14,7 @@ import org.enso.interpreter.runtime.callable.argument.Thunk;
 import org.enso.interpreter.runtime.callable.atom.AtomConstructor;
 import org.enso.interpreter.runtime.callable.function.Function;
 import org.enso.interpreter.runtime.error.NotInvokableException;
+import org.enso.interpreter.runtime.state.StateRef;
 
 /**
  * This class is responsible for performing the actual invocation of a given callable with its
@@ -117,8 +118,8 @@ public abstract class InvokeCallableNode extends BaseNode {
    * @return the result of executing {@code callable} on the known arguments
    */
   @Specialization
-  public Object invokeFunction(Function function, Object[] arguments) {
-    return this.argumentSorter.execute(function, arguments);
+  public Object invokeFunction(Function function, StateRef stateRef, Object[] arguments) {
+    return this.argumentSorter.execute(function, stateRef, arguments);
   }
 
   /**
@@ -129,8 +130,9 @@ public abstract class InvokeCallableNode extends BaseNode {
    * @return the result of executing {@code constructor} on the known arguments
    */
   @Specialization
-  public Object invokeConstructor(AtomConstructor constructor, Object[] arguments) {
-    return invokeFunction(constructor.getConstructorFunction(), arguments);
+  public Object invokeConstructor(
+      AtomConstructor constructor, StateRef stateRef, Object[] arguments) {
+    return invokeFunction(constructor.getConstructorFunction(), stateRef, arguments);
   }
 
   /**
@@ -142,7 +144,8 @@ public abstract class InvokeCallableNode extends BaseNode {
    * @return the result of resolving and executing the symbol for the {@code this} argument
    */
   @Specialization
-  public Object invokeDynamicSymbol(UnresolvedSymbol symbol, Object[] arguments) {
+  public Object invokeDynamicSymbol(
+      UnresolvedSymbol symbol, StateRef stateRef, Object[] arguments) {
     if (canApplyThis) {
       Object selfArgument = arguments[thisArgumentPosition];
       if (argumentsExecutionMode.shouldExecute()) {
@@ -150,10 +153,10 @@ public abstract class InvokeCallableNode extends BaseNode {
           CompilerDirectives.transferToInterpreterAndInvalidate();
           thisExecutor = ThunkExecutorNode.build(false);
         }
-        selfArgument = thisExecutor.executeThunk((Thunk) selfArgument);
+        selfArgument = thisExecutor.executeThunk((Thunk) selfArgument, stateRef);
       }
       Function function = methodResolverNode.execute(symbol, selfArgument);
-      return this.argumentSorter.execute(function, arguments);
+      return this.argumentSorter.execute(function, stateRef, arguments);
     } else {
       throw new RuntimeException("Currying without `this` argument is not yet supported.");
     }
@@ -170,7 +173,7 @@ public abstract class InvokeCallableNode extends BaseNode {
    * @return error
    */
   @Fallback
-  public Object invokeGeneric(Object callable, Object[] arguments) {
+  public Object invokeGeneric(Object callable, StateRef stateRef, Object[] arguments) {
     throw new NotInvokableException(callable, this);
   }
 
@@ -181,7 +184,7 @@ public abstract class InvokeCallableNode extends BaseNode {
    * @param arguments the arguments to evaluate {@code callable} on
    * @return the result of executing {@code callable} on the supplied {@code arguments}
    */
-  public abstract Object execute(Object callable, Object[] arguments);
+  public abstract Object execute(Object callable, StateRef stateRef, Object[] arguments);
 
   /**
    * Sets whether or not the current node is tail-recursive.

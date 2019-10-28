@@ -2,6 +2,7 @@ package org.enso.interpreter.builder;
 
 import org.enso.interpreter.*;
 import org.enso.interpreter.node.ExpressionNode;
+import org.enso.interpreter.node.InitializeStateNode;
 import org.enso.interpreter.node.callable.function.CreateFunctionNode;
 import org.enso.interpreter.runtime.Context;
 import org.enso.interpreter.runtime.callable.argument.ArgumentDefinition;
@@ -42,7 +43,7 @@ public class ModuleScopeExpressionFactory implements AstGlobalScopeVisitor<Expre
    * @return a runtime node representing the top-level expression
    */
   public ExpressionNode run(AstGlobalScope expr) {
-    return expr.visit(this);
+    return new InitializeStateNode(expr.visit(this));
   }
 
   /**
