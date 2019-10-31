@@ -151,7 +151,7 @@ public class CachedArgumentSorterNode extends BaseNode {
     if (this.appliesFully()) {
       if (!postApplicationSchema.hasOversaturatedArgs()) {
         if (this.isTail()) {
-          throw new TailCallException(function, mappedAppliedArguments);
+          throw new TailCallException(function, stateRef.getStateVal(), mappedAppliedArguments);
         } else {
           return optimiser.executeDispatch(function, stateRef, mappedAppliedArguments);
         }

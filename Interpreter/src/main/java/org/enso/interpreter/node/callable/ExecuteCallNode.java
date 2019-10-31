@@ -38,7 +38,13 @@ public abstract class ExecuteCallNode extends Node {
       Object[] arguments,
       @Cached("function.getCallTarget()") RootCallTarget cachedTarget,
       @Cached("create(cachedTarget)") DirectCallNode callNode) {
-    return callNode.call(Function.ArgumentsHelper.buildArguments(function, stateRef, arguments));
+    StateRef newStRef = new StateRef(stateRef.getStateVal());
+//    System.out.println(function.getCallTarget() + "::PRE: " + stateRef.getStateVal());
+    Object result =
+        callNode.call(Function.ArgumentsHelper.buildArguments(function, newStRef, arguments));
+    stateRef.setStateVal(newStRef.getStateVal());
+//    System.out.println(function.getCallTarget() + "::POST: " + stateRef.getStateVal());
+    return result;
   }
 
   /**
@@ -55,9 +61,13 @@ public abstract class ExecuteCallNode extends Node {
   @Specialization(replaces = "callDirect")
   protected Object callIndirect(
       Function function, StateRef stateRef, Object[] arguments, @Cached IndirectCallNode callNode) {
-    return callNode.call(
-        function.getCallTarget(),
-        Function.ArgumentsHelper.buildArguments(function, stateRef, arguments));
+    StateRef newStRef = new StateRef(stateRef.getStateVal());
+    Object result =
+        callNode.call(
+            function.getCallTarget(),
+            Function.ArgumentsHelper.buildArguments(function, newStRef, arguments));
+    stateRef.setStateVal(newStRef.getStateVal());
+    return result;
   }
 
   /**

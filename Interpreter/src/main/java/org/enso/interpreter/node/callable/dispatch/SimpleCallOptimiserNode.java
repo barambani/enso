@@ -28,6 +28,7 @@ public class SimpleCallOptimiserNode extends CallOptimiserNode {
       return executeCallNode.executeCall(callable, stateRef, arguments);
     } catch (TailCallException e) {
       CompilerDirectives.transferToInterpreterAndInvalidate();
+      stateRef.setStateVal(e.getState());
       CallOptimiserNode replacement = new LoopingCallOptimiserNode();
       this.replace(replacement);
       return replacement.executeDispatch(e.getFunction(), stateRef, e.getArguments());

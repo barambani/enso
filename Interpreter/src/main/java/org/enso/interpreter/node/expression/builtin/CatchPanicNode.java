@@ -10,6 +10,7 @@ import org.enso.interpreter.runtime.callable.argument.Thunk;
 import org.enso.interpreter.runtime.callable.function.Function;
 import org.enso.interpreter.runtime.error.PanicException;
 import org.enso.interpreter.runtime.error.RuntimeError;
+import org.enso.interpreter.runtime.state.StateRef;
 import org.enso.interpreter.runtime.type.TypesGen;
 
 /** Root node for the builtin catch panic function. */
@@ -35,9 +36,10 @@ public class CatchPanicNode extends RootNode {
    */
   public Object execute(VirtualFrame frame) {
     Object maybeThunk = Function.ArgumentsHelper.getPositionalArguments(frame.getArguments())[1];
+    StateRef stateRef = Function.ArgumentsHelper.getStateRef(frame.getArguments());
     if (TypesGen.isThunk(maybeThunk)) {
       try {
-        return thunkExecutorNode.executeThunk(TypesGen.asThunk(maybeThunk));
+        return thunkExecutorNode.executeThunk(TypesGen.asThunk(maybeThunk), stateRef);
       } catch (PanicException e) {
         return new RuntimeError(e.getExceptionObject());
       }

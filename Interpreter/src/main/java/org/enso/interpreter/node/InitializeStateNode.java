@@ -1,5 +1,6 @@
 package org.enso.interpreter.node;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.enso.interpreter.runtime.callable.function.Function;
@@ -14,10 +15,12 @@ public class InitializeStateNode extends ExpressionNode {
 
   @Override
   public Object executeGeneric(VirtualFrame frame) {
+    StateRef stateRef = new StateRef();
+    CompilerDirectives.ensureVirtualized(stateRef);
     return expr.executeGeneric(
         Truffle.getRuntime()
             .createVirtualFrame(
-                Function.ArgumentsHelper.buildArguments(new StateRef(), new Object[0]),
+                Function.ArgumentsHelper.buildArguments(stateRef, new Object[0]),
                 frame.getFrameDescriptor()));
   }
 }

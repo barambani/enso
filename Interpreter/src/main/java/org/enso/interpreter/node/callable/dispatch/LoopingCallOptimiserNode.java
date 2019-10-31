@@ -7,6 +7,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import org.enso.interpreter.node.callable.ExecuteCallNode;
 import org.enso.interpreter.node.callable.ExecuteCallNodeGen;
+import org.enso.interpreter.runtime.callable.function.Function;
 import org.enso.interpreter.runtime.control.TailCallException;
 import org.enso.interpreter.runtime.state.StateRef;
 
@@ -41,7 +42,7 @@ public class LoopingCallOptimiserNode extends CallOptimiserNode {
     VirtualFrame frame =
         Truffle.getRuntime().createVirtualFrame(new Object[] {stateRef}, loopFrameDescriptor);
     RepeatedCallNode repeatedCallNode = (RepeatedCallNode) loopNode.getRepeatingNode();
-    repeatedCallNode.setNextCall(frame, callable, arguments);
+    repeatedCallNode.setNextCall(frame, callable, stateRef.getStateVal(), arguments);
 
     loopNode.executeLoop(frame);
 
@@ -57,6 +58,7 @@ public class LoopingCallOptimiserNode extends CallOptimiserNode {
     private final FrameSlot resultSlot;
     private final FrameSlot functionSlot;
     private final FrameSlot argsSlot;
+    private final FrameSlot stateSlot;
     @Child private ExecuteCallNode dispatchNode;
 
     /**
@@ -68,6 +70,7 @@ public class LoopingCallOptimiserNode extends CallOptimiserNode {
       functionSlot = descriptor.findOrAddFrameSlot("<TCO Function>", FrameSlotKind.Object);
       resultSlot = descriptor.findOrAddFrameSlot("<TCO Result>", FrameSlotKind.Object);
       argsSlot = descriptor.findOrAddFrameSlot("<TCO Arguments>", FrameSlotKind.Object);
+      stateSlot = descriptor.findOrAddFrameSlot("<TCO State>", FrameSlotKind.Object);
       dispatchNode = ExecuteCallNodeGen.create();
     }
 
@@ -78,9 +81,10 @@ public class LoopingCallOptimiserNode extends CallOptimiserNode {
      * @param function the function to execute in {@code frame}
      * @param arguments the arguments to execute {@code function} with
      */
-    public void setNextCall(VirtualFrame frame, Object function, Object[] arguments) {
+    public void setNextCall(VirtualFrame frame, Object function, Object state, Object[] arguments) {
       frame.setObject(functionSlot, function);
       frame.setObject(argsSlot, arguments);
+      frame.setObject(stateSlot, state);
     }
 
     /**
@@ -118,6 +122,18 @@ public class LoopingCallOptimiserNode extends CallOptimiserNode {
     }
 
     /**
+     * Generates the next set of arguments to the looping function.
+     *
+     * @param frame the stack frame for execution
+     * @return the arguments to be applied to the next function
+     */
+    public Object getNextState(VirtualFrame frame) {
+      Object result = FrameUtil.getObjectSafe(frame, stateSlot);
+      frame.setObject(stateSlot, null);
+      return result;
+    }
+
+    /**
      * Executes the node in a repeating fashion until the call is complete.
      *
      * @param frame the stack frame for execution
@@ -125,14 +141,16 @@ public class LoopingCallOptimiserNode extends CallOptimiserNode {
      */
     @Override
     public boolean executeRepeating(VirtualFrame frame) {
-      StateRef stateRef = (StateRef) frame.getArguments()[0];
       try {
         Object function = getNextFunction(frame);
         Object[] arguments = getNextArgs(frame);
-        frame.setObject(resultSlot, dispatchNode.executeCall(function, stateRef, arguments));
+        StateRef ref = new StateRef(getNextState(frame));
+        frame.setObject(resultSlot, dispatchNode.executeCall(function, ref, arguments));
+        StateRef originalStateRef = (StateRef) frame.getArguments()[0];
+        originalStateRef.setStateVal(ref.getStateVal());
         return false;
       } catch (TailCallException e) {
-        setNextCall(frame, e.getFunction(), e.getArguments());
+        setNextCall(frame, e.getFunction(), e.getState(), e.getArguments());
         return true;
       }
     }
