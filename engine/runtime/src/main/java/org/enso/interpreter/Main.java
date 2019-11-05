@@ -1,21 +1,77 @@
 package org.enso.interpreter;
 
+import io.github.spencerpark.jupyter.kernel.BaseKernel;
+import io.github.spencerpark.jupyter.kernel.LanguageInfo;
+import io.github.spencerpark.jupyter.kernel.display.DisplayData;
 import org.apache.commons.cli.*;
+import org.enso.interpreter.instrument.ReplDebuggerInstrument;
 import org.enso.interpreter.runtime.RuntimeOptions;
 import org.enso.interpreter.util.ScalaConversions;
 import org.enso.pkg.Package;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Source;
+import io.github.spencerpark.jupyter.channels.JupyterConnection;
+import io.github.spencerpark.jupyter.channels.JupyterSocket;
+import io.github.spencerpark.jupyter.kernel.KernelConnectionProperties;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Optional;
+import java.util.Scanner;
+import java.util.logging.Level;
 
 /** The main CLI entry point class. */
 public class Main {
+  public static class EnsoKernel extends BaseKernel {
+
+    Context context;;
+
+    public EnsoKernel() {
+      this.context = createContext("", getIO().in, getIO().out);
+    }
+
+    @Override
+    public DisplayData eval(String expr) throws Exception {
+      return new DisplayData(context.eval(Constants.LANGUAGE_ID, expr).toString());
+    }
+
+    @Override
+    public LanguageInfo getLanguageInfo() {
+      return new LanguageInfo.Builder("enso").version("1.0").build();
+    }
+  }
+
+  public static void runJupyter(String connectionFileStr) throws Exception {
+    Path connectionFile = Paths.get(connectionFileStr);
+
+    if (!Files.isRegularFile(connectionFile))
+      throw new IllegalArgumentException("Connection file '" + connectionFile + "' isn't a file.");
+
+    String contents = new String(Files.readAllBytes(connectionFile));
+
+    JupyterSocket.JUPYTER_LOGGER.setLevel(Level.WARNING);
+
+    KernelConnectionProperties connProps = KernelConnectionProperties.parse(contents);
+    JupyterConnection connection = new JupyterConnection(connProps);
+
+    EnsoKernel kernel = new EnsoKernel();
+    kernel.becomeHandlerForConnection(connection);
+
+    connection.connect();
+    connection.waitUntilClose();
+  }
+
   private static final String RUN_OPTION = "run";
   private static final String HELP_OPTION = "help";
   private static final String NEW_OPTION = "new";
+  private static final String JUPYTER_OPTION = "jupyter-kernel";
 
   /**
    * Builds the {@link Options} object representing the CLI syntax.
@@ -42,8 +98,17 @@ public class Main {
             .desc("Creates a new Enso project.")
             .build();
 
+    Option jupyterOption =
+        Option.builder()
+            .hasArg(true)
+            .numberOfArgs(1)
+            .argName("connection file")
+            .longOpt(JUPYTER_OPTION)
+            .desc("Runs Enso Jupyter Kernel.")
+            .build();
+
     Options options = new Options();
-    options.addOption(help).addOption(run).addOption(newOpt);
+    options.addOption(help).addOption(run).addOption(newOpt).addOption(jupyterOption);
     return options;
   }
 
@@ -76,6 +141,23 @@ public class Main {
     exitSuccess();
   }
 
+  private static Context createContext(String packagePath) {
+    return createContext(packagePath, System.in, System.out);
+  }
+
+  private static Context createContext(String packagePath, InputStream in, OutputStream out) {
+    Context context =
+        Context.newBuilder(Constants.LANGUAGE_ID)
+            .allowExperimentalOptions(true)
+            .allowAllAccess(true)
+            .option(RuntimeOptions.getPackagesPathOption(), packagePath)
+            .out(out)
+            .in(in)
+            .build();
+    context.getEngine().getInstruments().get("enso-repl").lookup(ReplDebuggerInstrument.class);
+    return context;
+  }
+
   /**
    * Handles the {@code --run} CLI option.
    *
@@ -103,14 +185,7 @@ public class Main {
       mainLocation = main.get();
     }
 
-    Context context =
-        Context.newBuilder(Constants.LANGUAGE_ID)
-            .allowExperimentalOptions(true)
-            .allowAllAccess(true)
-            .option(RuntimeOptions.getPackagesPathOption(), packagePath)
-            .out(System.out)
-            .in(System.in)
-            .build();
+    Context context = createContext(packagePath);
     Source source = Source.newBuilder(Constants.LANGUAGE_ID, mainLocation).build();
     context.eval(source);
     exitSuccess();
@@ -121,7 +196,7 @@ public class Main {
    *
    * @param args the command line arguments
    */
-  public static void main(String[] args) throws IOException {
+  public static void main(String[] args) throws Exception {
     Options options = buildOptions();
     CommandLineParser parser = new DefaultParser();
     CommandLine line;
@@ -142,6 +217,9 @@ public class Main {
     }
     if (line.hasOption(RUN_OPTION)) {
       run(line.getOptionValue(RUN_OPTION));
+    }
+    if (line.hasOption(JUPYTER_OPTION)) {
+      runJupyter(line.getOptionValue(JUPYTER_OPTION));
     }
 
     printHelp(options);

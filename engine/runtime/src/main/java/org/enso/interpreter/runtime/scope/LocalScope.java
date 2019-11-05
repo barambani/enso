@@ -14,24 +14,23 @@ import java.util.Optional;
  * frames.
  */
 public class LocalScope {
-  private Map<String, FrameSlot> items;
-  private FrameDescriptor frameDescriptor;
-  private LocalScope parent;
+  public final Map<String, FrameSlot> items;
+  private final FrameDescriptor frameDescriptor;
+  public final LocalScope parent;
 
-  /** Creates a new local scope with defaulted arguments. */
+  /** Creates a root local scope. */
   public LocalScope() {
-    items = new HashMap<>();
-    frameDescriptor = new FrameDescriptor();
-    parent = null;
+    this(null);
   }
 
   /**
-   * Creates a new local scope with a known parent.
+   * Creates a child local scope with a given parent.
    *
    * @param parent the parent scope
    */
   public LocalScope(LocalScope parent) {
-    this();
+    items = new HashMap<>();
+    frameDescriptor = new FrameDescriptor();
     this.parent = parent;
   }
 
@@ -63,6 +62,21 @@ public class LocalScope {
    */
   public LocalScope createChild() {
     return new LocalScope(this);
+  }
+
+  public Map<String, FramePointer> flatten() {
+    Map<String, FramePointer> result = new HashMap<>();
+    flattenInto(result, 0);
+    return result;
+  }
+
+  private void flattenInto(Map<String, FramePointer> result, int level) {
+    for (String name : items.keySet()) {
+      if (result.get(name) == null) {
+        result.put(name, new FramePointer(level, items.get(name)));
+      }
+    }
+    if (this.parent != null) parent.flattenInto(result, level + 1);
   }
 
   /**

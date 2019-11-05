@@ -4,6 +4,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -11,6 +12,8 @@ import org.enso.interpreter.builder.FileDetector;
 import org.enso.interpreter.node.ProgramRootNode;
 import org.enso.interpreter.runtime.Context;
 import org.enso.interpreter.runtime.RuntimeOptions;
+import org.enso.interpreter.runtime.scope.LocalScope;
+import org.enso.interpreter.runtime.scope.ModuleScope;
 import org.graalvm.options.OptionDescriptors;
 
 /**
@@ -35,7 +38,8 @@ import org.graalvm.options.OptionDescriptors;
   StandardTags.CallTag.class,
   StandardTags.ExpressionTag.class,
   StandardTags.RootTag.class,
-  StandardTags.TryBlockTag.class
+  StandardTags.TryBlockTag.class,
+  DebuggerTags.AlwaysHalt.class
 })
 public final class Language extends TruffleLanguage<Context> {
 
@@ -82,7 +86,8 @@ public final class Language extends TruffleLanguage<Context> {
   @Override
   protected CallTarget parse(ParsingRequest request) {
     RootNode root =
-        new ProgramRootNode(this, new FrameDescriptor(), "root", null, request.getSource());
+        new ProgramRootNode(
+            this, new LocalScope(), new ModuleScope(), "root", null, request.getSource());
 
     return Truffle.getRuntime().createCallTarget(root);
   }

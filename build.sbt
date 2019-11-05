@@ -267,7 +267,8 @@ lazy val runtime = (project in file("engine/runtime"))
       "org.scalactic"          %% "scalactic"                % "3.0.8" % Test,
       "org.scalatest"          %% "scalatest"                % "3.2.0-SNAP10" % Test,
       "org.typelevel"          %% "cats-core"                % "2.0.0-M4",
-      "commons-cli"            % "commons-cli"               % "1.4"
+      "commons-cli"            % "commons-cli"               % "1.4",
+      "io.github.spencerpark"  % "jupyter-jvm-basekernel"    % "2.3.0"
     ),
     libraryDependencies ++= jmh
   )
@@ -285,13 +286,14 @@ lazy val runtime = (project in file("engine/runtime"))
   .settings(
     buildNativeImage := Def
       .task {
-        val javaHome         = System.getProperty("java.home")
-        val nativeImagePath  = s"$javaHome/bin/native-image"
-        val classPath        = (Runtime / fullClasspath).value.files.mkString(":")
+        val javaHome        = System.getProperty("java.home")
+        val nativeImagePath = s"$javaHome/bin/native-image"
+        val classPath       = (Runtime / fullClasspath).value.files.mkString(":")
+        println(classPath)
         val resourcesGlobOpt = "-H:IncludeResources=.*Main.enso$"
         val cmd =
           s"$nativeImagePath $resourcesGlobOpt --macro:truffle --no-fallback --initialize-at-build-time -cp $classPath ${(Compile / mainClass).value.get} enso"
-        cmd !
+//        cmd !
       }
       .dependsOn(Compile / compile)
       .value
