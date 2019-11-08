@@ -1,6 +1,7 @@
 package org.enso.syntax.text
 
-import org.enso.data.{Index, Span}
+import org.enso.data.Index
+import org.enso.data.Span
 import org.enso.flexer
 import org.enso.flexer.Reader
 import org.enso.syntax.text.ast.meta.Builtin
@@ -12,6 +13,11 @@ import org.enso.syntax.text.spec.ParserDef
 
 import scala.math.Ordering.Implicits._
 import scala.annotation.tailrec
+import org.enso.syntax.text2
+import io.circe.{Error => _, _}
+import io.circe.generic.auto._
+import io.circe.parser._
+import io.circe.syntax._
 
 ////////////////////////////////
 
@@ -364,5 +370,7 @@ object Main extends App {
   println()
 
   AST.main()
+
+  implicitly[Encoder[text2.AST.AST]]
 
 }
