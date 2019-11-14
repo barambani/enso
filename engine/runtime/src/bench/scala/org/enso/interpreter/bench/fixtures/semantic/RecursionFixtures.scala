@@ -88,7 +88,7 @@ class RecursionFixtures extends InterpreterRunner {
     """
       |{ |sumTo|
       |  summator = { |acc, current|
-      |      @eval [@Debug, "@ifZero [current, acc, @summator [acc + current, current - 1]]"]
+      |      @ifZero [current, acc, @eval [@Debug, "@summator [acc + current, current - 1]"]]
       |  };
       |  res = @summator [0, sumTo];
       |  res

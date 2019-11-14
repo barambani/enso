@@ -67,4 +67,19 @@ class EvalTest extends InterpreterTest {
     val fun = eval(code)
     fun.call(100) shouldEqual 5050
   }
+
+  "Debug.eval" should "work inside a thunk passed to another function" in {
+    val code =
+      """
+        |{ |sumTo|
+        |  summator = { |acc, current|
+        |      @ifZero [current, acc, @eval [@Debug, "@summator [acc + current, current - 1]"]]
+        |  };
+        |  res = @summator [0, sumTo];
+        |  res
+        |}
+        |""".stripMargin
+    val fun = eval(code)
+    fun.call(100) shouldEqual 5050
+  }
 }
