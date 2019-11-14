@@ -30,114 +30,114 @@ public class ReplDebuggerInstrument extends TruffleInstrument {
   @Override
   protected void onCreate(Env env) {
     this.env = env;
-    SourceSectionFilter filter =
-        SourceSectionFilter.newBuilder().tagIs(DebuggerTags.AlwaysHalt.class).build();
-    Instrumenter instrumenter = env.getInstrumenter();
-    env.registerService(this);
-    instrumenter.attachExecutionEventFactory(filter, ctx -> new MyExecutionEventListener(ctx, env));
+//    SourceSectionFilter filter =
+//        SourceSectionFilter.newBuilder().tagIs(DebuggerTags.AlwaysHalt.class).build();
+//    Instrumenter instrumenter = env.getInstrumenter();
+//    env.registerService(this);
+//    instrumenter.attachExecutionEventFactory(filter, ctx -> new MyExecutionEventListener(ctx, env));
   }
 
-  static class MyExecutionEventListener extends ExecutionEventNode {
-    private final Env env;
-    private @Child EvalNode evalNode = new EvalNode();
-    private Object lastReturn;
-    private Object lastState;
-    private EventContext eventContext;
-
-    public MyExecutionEventListener(EventContext eventContext, Env env) {
-      this.env = env;
-      this.eventContext = eventContext;
-    }
-
-    private Object getValue(MaterializedFrame frame, FramePointer ptr) {
-      return getProperFrame(frame, ptr).getValue(ptr.getFrameSlot());
-    }
-
-    private MaterializedFrame getProperFrame(MaterializedFrame frame, FramePointer ptr) {
-      MaterializedFrame currentFrame = frame;
-      for (int i = 0; i < ptr.getParentLevel(); i++) {
-        currentFrame = getParentFrame(currentFrame);
-      }
-      return currentFrame;
-    }
-
-    private MaterializedFrame getParentFrame(Frame frame) {
-      return Function.ArgumentsHelper.getLocalScope(frame.getArguments());
-    }
-
-    private void runREPLLoop(
-        MaterializedFrame frame, LocalScope localScope, ModuleScope moduleScope) {
-      Scanner scanner = new Scanner(env.in());
-      PrintStream prt = new PrintStream(env.out());
-
-      while (true) {
-        FrameDescriptor fd = frame.getFrameDescriptor();
-        prt.print(">>> ");
-        String[] cmd = scanner.nextLine().trim().split(" ");
-        if (cmd.length == 0) {
-          continue;
-        }
-        if (cmd[0].equals(":continue")) {
-          throw eventContext.createUnwind(lastReturn);
-        } else if (cmd[0].equals(":list")) {
-          Map<String, FramePointer> binds = localScope.flatten();
-          for (String name : binds.keySet()) {
-            prt.println(name + " = " + getValue(frame, binds.get(name)));
-          }
-          //          for (Object ident : idents) {
-          //            FrameSlot fs = fd.findFrameSlot(ident);
-          //            prt.println(ident + ": " + frame.getValue(fs));
-          //          }
-        } else if (cmd.length == 3 && cmd[0].equals(":set")) {
-          String vName = cmd[1];
-          Long vVal = Long.valueOf(cmd[2]);
-          FrameSlot fs = fd.findFrameSlot(vName);
-          if (fs != null) {
-            frame.setLong(fs, vVal);
-          } else {
-            prt.println("No such variable: " + vName);
-          }
-        } else {
-          String expr = String.join(" ", cmd);
-          LocalScope newLocalScope = new LocalScope(localScope);
-          try {
-            EvalNode.Framed result =
-                evalNode.execute(frame, lastState, newLocalScope, moduleScope, expr);
-            frame = result.getFrame();
-            lastState = result.getResult().getState();
-            localScope = newLocalScope;
-            lastReturn = result.getResult().getValue();
-            prt.println("> " + result.getResult().getValue());
-          } catch (Exception e) {
-            prt.println("Error: " + e.getMessage());
-          }
-        }
-      }
-    }
-
-    @Override
-    public void onEnter(VirtualFrame fr) {
-      System.out.println("Entering debug instrument!");
-      lastReturn = lookupContextReference(Language.class).get().getUnit().newInstance();
-      ClosureRootNode rootNode =
-          (ClosureRootNode) Truffle.getRuntime().getCallerFrame().getCallNode().getRootNode();
-      lastState = fr.getValue(rootNode.getStateFrameSlot());
-
-      runREPLLoop(fr.materialize(), rootNode.getLocalScope(), rootNode.getModuleScope());
-    }
-
-    @Override
-    protected Object onUnwind(VirtualFrame frame, Object info) {
-      return new Stateful(lastState, lastReturn);
-    }
-
-    @Override
-    public void onReturnValue(VirtualFrame frame, Object result) {
-      System.out.println("Leaving debug instrument.");
-    }
-
-    //    @Override
-    //    public void onReturnExceptional(
-    //        EventContext context, VirtualFrame frame, Throwable exception) {}
-  }
+//  static class MyExecutionEventListener extends ExecutionEventNode {
+//    private final Env env;
+//    private @Child EvalNode evalNode = new EvalNode();
+//    private Object lastReturn;
+//    private Object lastState;
+//    private EventContext eventContext;
+//
+//    public MyExecutionEventListener(EventContext eventContext, Env env) {
+//      this.env = env;
+//      this.eventContext = eventContext;
+//    }
+//
+//    private Object getValue(MaterializedFrame frame, FramePointer ptr) {
+//      return getProperFrame(frame, ptr).getValue(ptr.getFrameSlot());
+//    }
+//
+//    private MaterializedFrame getProperFrame(MaterializedFrame frame, FramePointer ptr) {
+//      MaterializedFrame currentFrame = frame;
+//      for (int i = 0; i < ptr.getParentLevel(); i++) {
+//        currentFrame = getParentFrame(currentFrame);
+//      }
+//      return currentFrame;
+//    }
+//
+//    private MaterializedFrame getParentFrame(Frame frame) {
+//      return Function.ArgumentsHelper.getLocalScope(frame.getArguments());
+//    }
+//
+//    private void runREPLLoop(
+//        MaterializedFrame frame, LocalScope localScope, ModuleScope moduleScope) {
+//      Scanner scanner = new Scanner(env.in());
+//      PrintStream prt = new PrintStream(env.out());
+//
+//      while (true) {
+//        FrameDescriptor fd = frame.getFrameDescriptor();
+//        prt.print(">>> ");
+//        String[] cmd = scanner.nextLine().trim().split(" ");
+//        if (cmd.length == 0) {
+//          continue;
+//        }
+//        if (cmd[0].equals(":continue")) {
+//          throw eventContext.createUnwind(lastReturn);
+//        } else if (cmd[0].equals(":list")) {
+//          Map<String, FramePointer> binds = localScope.flatten();
+//          for (String name : binds.keySet()) {
+//            prt.println(name + " = " + getValue(frame, binds.get(name)));
+//          }
+//          //          for (Object ident : idents) {
+//          //            FrameSlot fs = fd.findFrameSlot(ident);
+//          //            prt.println(ident + ": " + frame.getValue(fs));
+//          //          }
+//        } else if (cmd.length == 3 && cmd[0].equals(":set")) {
+//          String vName = cmd[1];
+//          Long vVal = Long.valueOf(cmd[2]);
+//          FrameSlot fs = fd.findFrameSlot(vName);
+//          if (fs != null) {
+//            frame.setLong(fs, vVal);
+//          } else {
+//            prt.println("No such variable: " + vName);
+//          }
+//        } else {
+//          String expr = String.join(" ", cmd);
+//          LocalScope newLocalScope = new LocalScope(localScope);
+//          try {
+//            EvalNode.Framed result =
+//                evalNode.execute(frame, lastState, newLocalScope, moduleScope, expr);
+//            frame = result.getFrame();
+//            lastState = result.getResult().getState();
+//            localScope = newLocalScope;
+//            lastReturn = result.getResult().getValue();
+//            prt.println("> " + result.getResult().getValue());
+//          } catch (Exception e) {
+//            prt.println("Error: " + e.getMessage());
+//          }
+//        }
+//      }
+//    }
+//
+//    @Override
+//    public void onEnter(VirtualFrame fr) {
+//      System.out.println("Entering debug instrument!");
+//      lastReturn = lookupContextReference(Language.class).get().getUnit().newInstance();
+//      ClosureRootNode rootNode =
+//          (ClosureRootNode) Truffle.getRuntime().getCallerFrame().getCallNode().getRootNode();
+//      lastState = fr.getValue(rootNode.getStateFrameSlot());
+//
+//      runREPLLoop(fr.materialize(), rootNode.getLocalScope(), rootNode.getModuleScope());
+//    }
+//
+//    @Override
+//    protected Object onUnwind(VirtualFrame frame, Object info) {
+//      return new Stateful(lastState, lastReturn);
+//    }
+//
+//    @Override
+//    public void onReturnValue(VirtualFrame frame, Object result) {
+//      System.out.println("Leaving debug instrument.");
+//    }
+//
+//    //    @Override
+//    //    public void onReturnExceptional(
+//    //        EventContext context, VirtualFrame frame, Throwable exception) {}
+//  }
 }

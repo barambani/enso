@@ -4,8 +4,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import org.enso.interpreter.runtime.callable.CallerInfo;
 
 /** A base type for all Enso language nodes. */
 @NodeInfo(shortName = "Base", description = "A base node for the Enso AST")
@@ -25,6 +27,11 @@ public class BaseNode extends Node {
       stateFrameSlot = ((EnsoRootNode) getRootNode()).getStateFrameSlot();
     }
     return stateFrameSlot;
+  }
+
+  protected CallerInfo buildCallerInfo(VirtualFrame frame) {
+//    EnsoRootNode root = (EnsoRootNode) getRootNode();
+    return null;// new CallerInfo(null, root.getLocalScope(), root.getModuleScope());
   }
 
   /**

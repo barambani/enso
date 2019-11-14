@@ -52,4 +52,19 @@ class EvalTest extends InterpreterTest {
         |""".stripMargin
     eval(code) shouldEqual 4
   }
+
+  "Debug.eval" should "work in a recursive setting" in {
+    val code =
+      """
+        |{ |sumTo|
+        |  summator = { |acc, current|
+        |      @eval [@Debug, "@ifZero [current, acc, @summator [acc + current, current - 1]]"]
+        |  };
+        |  res = @summator [0, sumTo];
+        |  res
+        |}
+        |""".stripMargin
+    val fun = eval(code)
+    fun.call(100) shouldEqual 5050
+  }
 }
