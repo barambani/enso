@@ -2,7 +2,8 @@ package org.enso.syntax.text.prec
 
 import org.enso.Logger
 import org.enso.data.Shifted
-import org.enso.syntax.text.AST
+import org.enso.syntax.text.{AST, Debug}
+import org.enso.syntax.text.AST.AbsoluteSpan
 import org.enso.syntax.text.ast.meta.Builder
 import org.enso.syntax.text.ast.meta.Builtin
 
@@ -144,5 +145,10 @@ object Macro {
 
       }
     }
+
+    val stream = AST.tokenize(t).toList()
+
+//    println(Debug.pretty(streamWithAbsoluteSpan.toString))
+    go(stream)
   }
 }

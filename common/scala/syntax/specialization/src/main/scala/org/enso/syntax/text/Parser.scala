@@ -2,10 +2,10 @@ package org.enso.syntax.text
 
 import java.util.UUID
 
-import org.enso.data.Index
-import org.enso.data.Span
+import org.enso.data.{Index, Shifted, Span}
 import org.enso.flexer
 import org.enso.flexer.Reader
+import org.enso.syntax.text.AST.AbsoluteSpan
 import org.enso.syntax.text.ast.meta.Builtin
 import org.enso.syntax.text.ast.opr.Prec
 import org.enso.syntax.text.prec.Distance
@@ -154,13 +154,48 @@ class Parser {
 
   def run(input: Reader): AST.Module = run(input, Nil)
 
-  def run(input: Reader, idMap: IDMap): AST.Module =
-    engine.run(input).map(Macro.run) match {
+  def run(input: Reader, idMap: IDMap): AST.Module = {
+    val tokenStream = engine.run(input)
+    println("===== Tokens =====")
+    println(Debug.pretty(tokenStream.toString))
+    println("===== Attach abs spans =====")
+    tokenStream.map(attachAbsoluteSpans)
+    tokenStream.map(Macro.run) match {
       case flexer.Parser.Result(_, flexer.Parser.Result.Success(mod)) =>
         val mod2 = annotateModule(idMap, mod)
         resolveMacros(mod2).asInstanceOf[AST.Module]
       case _ => throw ParsingFailed
     }
+  }
+
+  def attachAbsoluteSpans(ast: AST): AST = {
+    println("==== Spans? ====")
+    var currentOffset = 0
+    def go(ast: AST, startOffset: Int): AST = {
+      var currentOffset = startOffset
+      val spannedAst = ast.setSpan(Some(AbsoluteSpan(startOffset, startOffset + ast.span)))
+      spannedAst.map { child =>
+        go(child, currentOffset)
+        currentOffset += (child.span + child.)
+      }
+    }
+
+//    val streamWithAbsoluteSpan = ast.map {
+//      case Shifted(off, el) =>
+//        val newEl = {
+//          el.setSpan(
+//            Some(
+//              AbsoluteSpan(
+//                off + currentOffset,
+//                off + currentOffset + el.span - 1
+//              )
+//            )
+//          )
+//        }
+//        currentOffset += off + el.span
+//        Shifted(off, newEl)
+//    }
+  }
 
   def annotateModule(
     idMap: IDMap,
@@ -221,7 +256,7 @@ class Parser {
 
 object Parser {
   type IDMap = Seq[(Span, AST.ID)]
-  def apply(): Parser   = new Parser()
+  def apply(): Parser = new Parser()
   private val newEngine = flexer.Parser.compile(ParserDef())
 
   //// Exceptions ////

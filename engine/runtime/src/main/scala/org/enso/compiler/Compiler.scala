@@ -7,7 +7,13 @@ import com.oracle.truffle.api.source.Source
 import org.enso.compiler.generate.AstToAstExpression
 import org.enso.compiler.core.IR
 import org.enso.flexer.Reader
-import org.enso.interpreter.{AstExpression, AstModuleScope, Constants, EnsoParser, Language}
+import org.enso.interpreter.{
+  AstExpression,
+  AstModuleScope,
+  Constants,
+  EnsoParser,
+  Language
+}
 import org.enso.interpreter.builder.ExpressionFactory
 import org.enso.interpreter.builder.ModuleScopeExpressionFactory
 import org.enso.interpreter.node.ExpressionNode
@@ -141,8 +147,11 @@ class Compiler(
     val parser: Parser = Parser()
     val unresolvedAST: AST.Module =
       parser.run(new Reader(source.getCharacters.toString))
+    println("===== Unresolved AST =====")
+    println(Debug.pretty(unresolvedAST.toString))
     val resolvedAST: AST.Module = parser.dropMacroMeta(unresolvedAST)
-
+    println("===== No macro meta AST =====")
+    println(Debug.pretty(resolvedAST.toString))
     resolvedAST
   }
 

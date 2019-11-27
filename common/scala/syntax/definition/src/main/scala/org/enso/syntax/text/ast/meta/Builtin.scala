@@ -4,8 +4,7 @@ import org.enso.data.List1
 import org.enso.data.Shifted
 import org.enso.syntax.text.AST
 import org.enso.syntax.text.AST.Macro.Definition
-import org.enso.syntax.text.AST.Opr
-import org.enso.syntax.text.AST.Var
+import org.enso.syntax.text.AST.{AbsoluteSpan, Opr, Var}
 import org.enso.syntax.text.ast.Repr
 
 import scala.annotation.tailrec
@@ -146,7 +145,8 @@ object Builtin {
       (ctx.prefix, ctx.body) match {
         case (Some(pfx), List(s1)) =>
           (pfx.toStream, s1.body.toStream) match {
-            case (List(l), List(r)) => AST.App.Infix(l.el, Opr("->"), r.el)
+            case (List(l), List(r)) =>
+              AST.App.Infix(l.el, Opr("->"), r.el)
             case _                  => internalError
           }
       }
