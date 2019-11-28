@@ -51,11 +51,13 @@ class SimpleArithmeticTest extends InterpreterTest {
 
     val code =
       """
-        |a -> b
+        |@{
+        |  foo = { |a, b = @throw [Panic, "Panic"]| a };
+        |
+        |  @foo [1]
+        |}
         |""".stripMargin
-    println(code.length)
-
-    eval(code)
+    evalOld(code)
 
   }
 }

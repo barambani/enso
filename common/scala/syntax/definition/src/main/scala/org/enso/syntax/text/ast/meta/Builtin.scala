@@ -4,7 +4,7 @@ import org.enso.data.List1
 import org.enso.data.Shifted
 import org.enso.syntax.text.AST
 import org.enso.syntax.text.AST.Macro.Definition
-import org.enso.syntax.text.AST.{AbsoluteSpan, Opr, Var}
+import org.enso.syntax.text.AST.{AbsolutePosition, Opr, Var}
 import org.enso.syntax.text.ast.Repr
 
 import scala.annotation.tailrec

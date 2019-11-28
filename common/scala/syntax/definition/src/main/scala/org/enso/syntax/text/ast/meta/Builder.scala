@@ -153,11 +153,7 @@ object Builder {
 
   case class Context(tree: Registry.Tree, parent: Option[Context]) {
 
-    def lookup(t: AST): Option[Registry.Tree] = {
-      val res = tree.get(t)
-      println(s"Macro lookup: $t. Result: ${res.isDefined}")
-      res
-    }
+    def lookup(t: AST): Option[Registry.Tree] = tree.get(t)
     def isEmpty: Boolean = tree.isLeaf
 
     @tailrec

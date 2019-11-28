@@ -68,13 +68,32 @@ class MethodsTest extends InterpreterTest {
     val code =
       """
         |Any.method =
+        |
+        |
         |    x = this * this
+        |
         |    y = x * 2
         |    y + 1
-        |    
+        |
         |3.method
         |""".stripMargin
+
+
     eval(code) shouldEqual 19
+
+    var off = 0
+    code.lines.toList.foreach { line =>
+      val chars = line.toList.map { c =>
+        s" ${if (c == ' ') '_' else c} "
+      } :+ '↵'
+      val ixes = off.until(off + chars.length).map { i =>
+        if (i.toString.length == 1) s" $i " else s"$i "
+      }
+      println(ixes.mkString(""))
+      println(chars.mkString(""))
+      println()
+      off += line.length + 1
+    }
   }
 
   "Methods" should "be dispatched to the proper constructor" in {

@@ -3,7 +3,7 @@ package org.enso.syntax.text.prec
 import org.enso.Logger
 import org.enso.data.Shifted
 import org.enso.syntax.text.{AST, Debug}
-import org.enso.syntax.text.AST.AbsoluteSpan
+import org.enso.syntax.text.AST.AbsolutePosition
 import org.enso.syntax.text.ast.meta.Builder
 import org.enso.syntax.text.ast.meta.Builtin
 
