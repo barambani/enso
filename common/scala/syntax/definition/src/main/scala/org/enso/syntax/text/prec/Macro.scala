@@ -145,10 +145,5 @@ object Macro {
 
       }
     }
-
-    val stream = AST.tokenize(t).toList()
-
-//    println(Debug.pretty(streamWithAbsoluteSpan.toString))
-    go(stream)
   }
 }

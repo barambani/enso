@@ -48,21 +48,14 @@ class SimpleArithmeticTest extends InterpreterTest {
 //        |(Cons h t : a) -> a
 //        |""".stripMargin
 
-    case class Foo[A](a: NonEmptyList[A], b: NonEmptyList[A])
-    implicit val fold: Foldable[Foo] = semi.foldable
-    implicit val intMono: Monoid[Int] = new Monoid[Int] {
-      override def empty: Int = 0
-
-      override def combine(x: Int, y: Int): Int = x + y
-    }
-
-    println(fold.fold( Foo(NonEmptyList.of(1,2,3), NonEmptyList.of(10,20,30))))
 
     val code =
       """
-        |if a then b else c
-        |a + b * c
+        |a -> b
         |""".stripMargin
+    println(code.length)
+
     eval(code)
+
   }
 }

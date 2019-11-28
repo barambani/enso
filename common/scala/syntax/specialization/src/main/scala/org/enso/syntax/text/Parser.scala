@@ -2,17 +2,19 @@ package org.enso.syntax.text
 
 import java.util.UUID
 
-import org.enso.data.{Index, Shifted, Span}
+import cats.{Foldable, Monoid}
+import org.enso.data.{Index, List1, Shifted, Span}
 import org.enso.flexer
 import org.enso.flexer.Reader
-import org.enso.syntax.text.AST.AbsoluteSpan
+import org.enso.syntax.text.AST.Block.{Line, OptLine}
+import org.enso.syntax.text.AST.{AbsoluteSpan, App, Module}
 import org.enso.syntax.text.ast.meta.Builtin
 import org.enso.syntax.text.ast.opr.Prec
 import org.enso.syntax.text.prec.Distance
 import org.enso.syntax.text.prec.Macro
 import org.enso.syntax.text.prec.Operator
 import org.enso.syntax.text.spec.ParserDef
-
+import cats.implicits._
 import scala.math.Ordering.Implicits._
 import scala.annotation.tailrec
 
@@ -159,8 +161,9 @@ class Parser {
     println("===== Tokens =====")
     println(Debug.pretty(tokenStream.toString))
     println("===== Attach abs spans =====")
-    tokenStream.map(attachAbsoluteSpans)
-    tokenStream.map(Macro.run) match {
+    val spanned = tokenStream.map(attachModuleAbsoluteSpans)
+    println(Debug.pretty(spanned.toString))
+    spanned.map(Macro.run) match {
       case flexer.Parser.Result(_, flexer.Parser.Result.Success(mod)) =>
         val mod2 = annotateModule(idMap, mod)
         resolveMacros(mod2).asInstanceOf[AST.Module]
@@ -168,17 +171,35 @@ class Parser {
     }
   }
 
-  def attachAbsoluteSpans(ast: AST): AST = {
-    println("==== Spans? ====")
-    var currentOffset = 0
-    def go(ast: AST, startOffset: Int): AST = {
-      var currentOffset = startOffset
-      val spannedAst = ast.setSpan(Some(AbsoluteSpan(startOffset, startOffset + ast.span)))
-      spannedAst.map { child =>
-        go(child, currentOffset)
-        currentOffset += (child.span + child.)
-      }
+  def attachModuleAbsoluteSpans(ast: AST.Module): AST.Module = {
+    var currentOffset = 0;
+    val newLines: List1[OptLine] = ast.lines.map { line =>
+      val fixedLine =
+        Line(line.elem.map(attachAbsoluteSpans(_, currentOffset)), line.off)
+      currentOffset += line.elem.map(_.span).getOrElse(0) + line.off + 1
+      fixedLine
     }
+    Module(newLines).setSpan(Some(AbsoluteSpan(0, ast.span)))
+  }
+
+  def attachAbsoluteSpans(ast: AST, startOffset: Int): AST = ast match {
+    case App.Prefix.any(app) =>
+      val fixedFn = attachAbsoluteSpans(app.fn, startOffset)
+      val fixedArg =
+        attachAbsoluteSpans(app.arg, startOffset + fixedFn.span + app.off)
+      val fixedApp = App.Prefix(fixedFn, app.off, fixedArg)
+      fixedApp
+    case _ =>
+      ast.setSpan(Some(AbsoluteSpan(startOffset, startOffset + ast.span)))
+  }
+
+//      var currentOffset = startOffset
+//      val spannedAst = ast.setSpan(Some(AbsoluteSpan(startOffset, startOffset + ast.span)))
+//      spannedAst.map { child =>
+//        go(child, currentOffset)
+//        currentOffset += (child.span + child.)
+//      }
+//    }
 
 //    val streamWithAbsoluteSpan = ast.map {
 //      case Shifted(off, el) =>
@@ -195,7 +216,6 @@ class Parser {
 //        currentOffset += off + el.span
 //        Shifted(off, newEl)
 //    }
-  }
 
   def annotateModule(
     idMap: IDMap,
@@ -246,8 +266,34 @@ class Parser {
     */
   def dropMacroMeta(ast: AST.Module): AST.Module = {
     def go: AST => AST = {
-      case AST.Macro.Match.any(t) => go(t.resolved)
-      case t                      => t.map(go)
+      case AST.Macro.Match.any(t) => {
+        val prefix: List[AST] = t.pfx.toList.flatMap(_.toStream.map(_.el))
+        val originalSegments: List[AST] = prefix ++ t.segs
+            .toList()
+            .flatMap(_.el.toStream.map(_.el))
+        implicit val optionSpanMonoid: Monoid[Option[AbsoluteSpan]] =
+          new Monoid[Option[AbsoluteSpan]] {
+            override def empty: Option[AbsoluteSpan] = None
+
+            override def combine(
+              x: Option[AbsoluteSpan],
+              y: Option[AbsoluteSpan]
+            ): Option[AbsoluteSpan] = x match {
+              case None => y
+              case Some(lSpan @ AbsoluteSpan(lStart, _)) =>
+                y match {
+                  case None => Some(lSpan)
+                  case Some(AbsoluteSpan(_, rEnd)) =>
+                    Some(AbsoluteSpan(lStart, rEnd))
+                }
+            }
+          }
+        val originalSpan =
+          Foldable[List].foldMap(originalSegments)(_.absoluteSpan)
+        val resolved = t.resolved.setSpan(originalSpan)
+        go(resolved)
+      }
+      case t => t.map(go)
     }
     ast.map(go)
   }
@@ -256,7 +302,7 @@ class Parser {
 
 object Parser {
   type IDMap = Seq[(Span, AST.ID)]
-  def apply(): Parser = new Parser()
+  def apply(): Parser   = new Parser()
   private val newEngine = flexer.Parser.compile(ParserDef())
 
   //// Exceptions ////
@@ -276,7 +322,7 @@ object Parser {
 //// Main ////
 //////////////
 
-object Main extends App {
+object Main extends scala.App {
 
   println("--- START ---")
 
